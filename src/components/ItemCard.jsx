@@ -7,7 +7,6 @@ export default function ItemCard({ item, busy, showRating, onEdit, onDelete, onT
     <article className={`card ${item.watched ? 'is-watched' : ''} ${busy ? 'is-busy' : ''}`}>
       <div className="card-media">
         <Poster item={item} />
-        <span className="badge badge-type">{item.type?.toLowerCase() === 'series' ? 'Series' : 'Movie'}</span>
         {item.watched && (
           <span className="badge badge-watched" title="Watched">
             <Check size={14} strokeWidth={3} />

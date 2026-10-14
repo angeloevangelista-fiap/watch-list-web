@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Clapperboard, FlaskConical, Plus, RefreshCw, Search, ServerCrash, Popcorn } from 'lucide-react'
+import { BookOpen, Clapperboard, FlaskConical, Plus, RefreshCw, Search, ServerCrash, Popcorn } from 'lucide-react'
+import { describeError } from './api/client'
 import { changeItem, createItem, deleteItem, listItems, updateItem } from './api/watchlist'
 import { FEATURES } from './features'
 import { useSettings } from './settings'
@@ -31,7 +32,6 @@ export default function App() {
 
   // List controls
   const [status, setStatus] = useState('all')
-  const [type, setType] = useState('all')
   const [search, setSearch] = useState('')
   const q = useDebounced(search, 350)
 
@@ -44,7 +44,7 @@ export default function App() {
   // UI
   const [form, setForm] = useState(null) // null | { item?: object }
   const [toDelete, setToDelete] = useState(null)
-  const [labOpen, setLabOpen] = useState(false)
+  const [lab, setLab] = useState(null) // null | initial tab name
   const [toasts, setToasts] = useState([])
 
   const notify = useCallback((message, kind = 'success') => {
@@ -53,8 +53,8 @@ export default function App() {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500)
   }, [])
 
-  // Only send query params to GET /watchlist when the filtering feature is on.
-  const queryKey = JSON.stringify(f.filtering ? { q, type, status } : null)
+  // Only send query params to GET /api/watchlist when the filtering feature is on.
+  const queryKey = JSON.stringify(f.filtering ? { q, status } : null)
 
   useEffect(() => {
     let cancelled = false
@@ -112,7 +112,7 @@ export default function App() {
       notify(`“${item.title}” removed`)
       reload()
     } catch (err) {
-      notify(err.message, 'error')
+      notify(describeError(err), 'error')
       throw err
     }
   }
@@ -125,7 +125,7 @@ export default function App() {
       if (message) notify(message)
       if (f.filtering || f.stats) reload()
     } catch (err) {
-      notify(err.message, 'error')
+      notify(describeError(err), 'error')
     } finally {
       setBusyIds((s) => {
         const next = new Set(s)
@@ -146,13 +146,13 @@ export default function App() {
           <span className="logo">
             <Clapperboard size={18} />
           </span>
-          <span className="brand-name">Reelist</span>
+          <span className="brand-name">Watchlist</span>
         </div>
 
         <div className="topbar-right">
           <button
             className={`chip phase ${enabledCount ? 'phase-2' : ''}`}
-            onClick={() => setLabOpen(true)}
+            onClick={() => setLab('features')}
             title="Open the Lab to manage Phase 2 features"
           >
             {enabledCount ? `Phase 2 · ${enabledCount}/${FEATURES.length}` : 'Phase 1'}
@@ -164,7 +164,10 @@ export default function App() {
             <span className="dot" />
             {settings.mock ? 'Mock API' : new URL(settings.apiUrl, location.href).host}
           </span>
-          <button className="icon-btn" onClick={() => setLabOpen(true)} aria-label="Open Lab" title="Lab">
+          <button className="btn ghost" onClick={() => setLab('contract')} title="See the API contract the app expects">
+            <BookOpen size={16} /> <span className="hide-sm">API</span>
+          </button>
+          <button className="icon-btn" onClick={() => setLab('features')} aria-label="Open Lab" title="Lab">
             <FlaskConical size={18} />
           </button>
           <button className="btn primary" onClick={() => setForm({})}>
@@ -202,11 +205,6 @@ export default function App() {
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </label>
-              <select value={type} onChange={(e) => setType(e.target.value)} aria-label="Type">
-                <option value="all">All types</option>
-                <option value="movie">Movies</option>
-                <option value="series">Series</option>
-              </select>
             </div>
           )}
         </div>
@@ -243,9 +241,9 @@ export default function App() {
         ) : visible.length === 0 ? (
           <div className="empty">
             <Popcorn size={40} />
-            <h2>{list.items.length || q || type !== 'all' || status !== 'all' ? 'Nothing here' : 'Your watchlist is empty'}</h2>
+            <h2>{list.items.length || q || status !== 'all' ? 'Nothing here' : 'Your watchlist is empty'}</h2>
             <p className="muted">
-              {list.items.length || q || type !== 'all' || status !== 'all'
+              {list.items.length || q || status !== 'all'
                 ? 'No titles match this view.'
                 : 'Add the first movie or series you want to watch.'}
             </p>
@@ -274,14 +272,13 @@ export default function App() {
       </main>
 
       <footer className="footer muted small">
-        Reelist · REST API class project · {settings.mock ? 'mock API' : settings.apiUrl}
+        REST API class project · {settings.mock ? 'mock API' : settings.apiUrl}
       </footer>
 
       {form && (
         <ItemForm
           item={form.item}
           showRating={f.ratings}
-          serverValidation={f.validation}
           onSubmit={(payload) => (form.item ? handleUpdate(form.item, payload) : handleCreate(payload))}
           onClose={() => setForm(null)}
         />
@@ -295,7 +292,7 @@ export default function App() {
           onClose={() => setToDelete(null)}
         />
       )}
-      {labOpen && <LabPanel onClose={() => setLabOpen(false)} onDataReset={reload} />}
+      {lab && <LabPanel initialTab={lab} onClose={() => setLab(null)} onDataReset={reload} />}
       <Toasts toasts={toasts} />
     </div>
   )

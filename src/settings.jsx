@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useState } from 'react'
 import { configureApi } from './api/client'
 import { DEFAULT_FEATURES } from './features'
 
-const STORAGE_KEY = 'reelist.settings'
+const STORAGE_KEY = 'watchlist.settings'
 
 const DEFAULTS = {
   apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:3333',

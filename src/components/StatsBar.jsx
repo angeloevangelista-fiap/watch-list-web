@@ -30,7 +30,7 @@ export default function StatsBar({ version }) {
       <div className="alert error stats-error">
         <TriangleAlert size={18} />
         <span>
-          <strong>GET /watchlist/stats</strong> failed: {state.error.message}
+          <strong>GET /api/watchlist/stats</strong> failed: {state.error.message}
         </span>
       </div>
     )
@@ -42,7 +42,7 @@ export default function StatsBar({ version }) {
   const pct = s.total ? Math.round((s.watched / s.total) * 100) : 0
   return (
     <section className="stats" aria-label="Watchlist stats">
-      <Stat label="Total" value={s.total} sub={`${s.byType?.movie ?? 0} movies · ${s.byType?.series ?? 0} series`} />
+      <Stat label="Total" value={s.total} />
       <Stat label="Watched" value={s.watched} sub={`${pct}% complete`} />
       <Stat label="To watch" value={s.unwatched} />
       <Stat label="Avg. rating" value={s.averageRating != null ? `${s.averageRating}★` : '—'} />

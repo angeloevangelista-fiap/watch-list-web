@@ -1,9 +1,8 @@
 import { ApiError, request } from './client'
 import { RESOURCE } from '../features'
 
-// Fields the client is allowed to send. Server-managed fields (id, createdAt,
-// updatedAt) are stripped before PUT.
-const EDITABLE = ['title', 'type', 'year', 'genre', 'posterUrl', 'notes', 'watched', 'rating']
+// Fields the client is allowed to send. The id is stripped before PUT.
+const EDITABLE = ['title', 'year', 'genre', 'posterUrl', 'notes', 'watched', 'rating']
 
 export function toPayload(item) {
   return Object.fromEntries(EDITABLE.filter((k) => k in item).map((k) => [k, item[k]]))
@@ -11,13 +10,12 @@ export function toPayload(item) {
 
 /**
  * Lists items. Phase 1 sends no params; with the filtering feature on it sends
- * ?q=&type=&watched= (empty ones are left out). Expects a plain JSON array.
+ * ?q=&watched= (empty ones are left out). Expects a plain JSON array.
  */
 export async function listItems(filters) {
   const query = {}
   if (filters) {
     query.q = filters.q.trim()
-    if (filters.type !== 'all') query.type = filters.type
     if (filters.status !== 'all') query.watched = filters.status === 'watched'
   }
 

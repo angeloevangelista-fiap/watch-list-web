@@ -33,6 +33,12 @@ export function parseValidationErrors(body) {
   return Object.keys(out).length ? out : null
 }
 
+/** One-line description of an error, including the API's validation messages if any. */
+export function describeError(err) {
+  const messages = Object.values(err?.fieldErrors ?? {})
+  return messages.length ? `${err.message} ${messages.join(' ')}` : err?.message ?? String(err)
+}
+
 let config = { baseUrl: 'http://localhost:3333', mock: false }
 
 export function configureApi(next) {

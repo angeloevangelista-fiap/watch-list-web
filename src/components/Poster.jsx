@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Film, Tv } from 'lucide-react'
+import { Film } from 'lucide-react'
 
 function hue(text) {
   let h = 0
@@ -16,7 +16,6 @@ export default function Poster({ item }) {
   }
 
   const h = hue(item.title || '?')
-  const Icon = item.type?.toLowerCase() === 'series' ? Tv : Film
   return (
     <div
       className="poster poster-generated"
@@ -26,7 +25,7 @@ export default function Poster({ item }) {
       }}
       aria-hidden="true"
     >
-      <Icon className="poster-icon" size={22} />
+      <Film className="poster-icon" size={22} />
       <span className="poster-title">{item.title}</span>
       {item.year && <span className="poster-year">{item.year}</span>}
     </div>

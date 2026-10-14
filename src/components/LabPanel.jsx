@@ -4,6 +4,7 @@ import { clearLog, getLog, subscribeLog } from '../api/client'
 import { resetMockDb } from '../api/mock'
 import { FEATURES } from '../features'
 import { useSettings } from '../settings'
+import ContractView from './ContractView'
 
 function FeatureCard({ feature, enabled, onToggle }) {
   const [open, setOpen] = useState(false)
@@ -11,10 +12,7 @@ function FeatureCard({ feature, enabled, onToggle }) {
     <div className={`feature ${enabled ? 'enabled' : ''}`}>
       <div className="feature-head">
         <div>
-          <div className="feature-title">
-            {feature.title}
-            <span className={`level level-${feature.level.toLowerCase()}`}>{feature.level}</span>
-          </div>
+          <div className="feature-title">{feature.title}</div>
           <p className="muted small">{feature.summary}</p>
         </div>
         <label className="switch" title={enabled ? 'Disable' : 'Enable'}>
@@ -98,7 +96,7 @@ function Connection({ onDataReset }) {
           <input value={url} onChange={(e) => setUrl(e.target.value)} disabled={settings.mock} />
           <button className="btn" disabled={settings.mock || url.trim() === settings.apiUrl}>Save</button>
         </div>
-        <small className="muted">The app calls <code>{'{base}'}/watchlist</code>.</small>
+        <small className="muted">The app calls <code>{'{base}'}/api/watchlist</code>.</small>
       </form>
 
       <div className="feature">
@@ -131,9 +129,9 @@ function Connection({ onDataReset }) {
   )
 }
 
-export default function LabPanel({ onClose, onDataReset }) {
+export default function LabPanel({ initialTab = 'features', onClose, onDataReset }) {
   const { settings, toggleFeature } = useSettings()
-  const [tab, setTab] = useState('features')
+  const [tab, setTab] = useState(initialTab)
   const enabledCount = FEATURES.filter((f) => settings.features[f.key]).length
 
   useEffect(() => {
@@ -150,7 +148,7 @@ export default function LabPanel({ onClose, onDataReset }) {
             <FlaskConical size={20} />
             <div>
               <h2>Lab</h2>
-              <p className="muted small">Class tools: Phase 2 features, request log and API connection</p>
+              <p className="muted small">Class tools: API contract, Phase 2 features, request log and connection</p>
             </div>
           </div>
           <button className="icon-btn" onClick={onClose} aria-label="Close">
@@ -160,6 +158,7 @@ export default function LabPanel({ onClose, onDataReset }) {
 
         <nav className="tabs drawer-tabs">
           {[
+            ['contract', 'API contract'],
             ['features', `Phase 2 · ${enabledCount}/${FEATURES.length}`],
             ['requests', 'Requests'],
             ['connection', 'Connection'],
@@ -182,6 +181,7 @@ export default function LabPanel({ onClose, onDataReset }) {
               ))}
             </>
           )}
+          {tab === 'contract' && <ContractView />}
           {tab === 'requests' && <RequestLog />}
           {tab === 'connection' && <Connection onDataReset={onDataReset} />}
         </div>

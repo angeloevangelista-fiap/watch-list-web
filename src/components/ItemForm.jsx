@@ -1,43 +1,34 @@
 import { useState } from 'react'
-import { Film, Tv } from 'lucide-react'
 import Modal from './Modal'
 import Stars from './Stars'
 
-const MAX_YEAR = new Date().getFullYear() + 5
+const FIELDS = ['title', 'year', 'genre', 'posterUrl', 'notes', 'watched', 'rating']
 
-const FIELDS = ['title', 'type', 'year', 'genre', 'posterUrl', 'notes', 'watched', 'rating']
+const EMPTY = { title: '', year: '', genre: '', posterUrl: '', notes: '', watched: false, rating: null }
 
-const EMPTY = { title: '', type: 'movie', year: '', genre: '', posterUrl: '', notes: '', watched: false, rating: null }
-
-function clientValidate(v) {
-  const errors = {}
-  if (!v.title.trim()) errors.title = 'Title is required'
-  else if (v.title.length > 120) errors.title = 'Title must have at most 120 characters'
-  if (v.year !== '') {
-    const y = Number(v.year)
-    if (!Number.isInteger(y) || y < 1888 || y > MAX_YEAR) errors.year = `Year must be between 1888 and ${MAX_YEAR}`
-  }
-  return errors
+// "2014" → 2014, "" → null. Anything else (e.g. "abc") is sent as typed so the API has to reject it.
+function toYear(value) {
+  const text = String(value).trim()
+  if (text === '') return null
+  return /^-?\d+(\.\d+)?$/.test(text) ? Number(text) : value
 }
 
 /**
- * Create / edit form.
- * - `serverValidation` (Phase 2) disables every client-side check, so bad data reaches the API.
- * - Field errors returned by the API as { errors: { field: message } } are always displayed.
+ * Create / edit form. There is no validation here on purpose: the API is the
+ * one that validates. Whatever 400 it returns is shown in the form.
  */
-export default function ItemForm({ item, showRating, serverValidation, onSubmit, onClose }) {
+export default function ItemForm({ item, showRating, onSubmit, onClose }) {
   const editing = Boolean(item)
   const [values, setValues] = useState(() => ({
     ...EMPTY,
     ...(item ?? {}),
-    type: item?.type?.toLowerCase() || 'movie',
     year: item?.year ?? '',
     genre: item?.genre ?? '',
     posterUrl: item?.posterUrl ?? '',
     notes: item?.notes ?? '',
   }))
   const [errors, setErrors] = useState({})
-  const [formError, setFormError] = useState(null) // { message, details: string[] }
+  const [formError, setFormError] = useState(null) // { status, message, details: [key, message][] }
   const [saving, setSaving] = useState(false)
 
   const set = (field) => (e) => {
@@ -50,20 +41,14 @@ export default function ItemForm({ item, showRating, serverValidation, onSubmit,
     e.preventDefault()
     setFormError(null)
 
-    if (!serverValidation) {
-      const errs = clientValidate(values)
-      setErrors(errs)
-      if (Object.keys(errs).length) return
-    }
+    setErrors({})
 
     const payload = {
-      title: values.title.trim(),
-      type: values.type,
-      // With server validation on, send exactly what was typed (e.g. "abc") so the API has to deal with it.
-      year: values.year === '' ? null : serverValidation && isNaN(Number(values.year)) ? values.year : Number(values.year),
-      genre: values.genre.trim(),
-      posterUrl: values.posterUrl.trim(),
-      notes: values.notes.trim(),
+      title: values.title,
+      year: toYear(values.year),
+      genre: values.genre,
+      posterUrl: values.posterUrl,
+      notes: values.notes,
       watched: values.watched,
     }
     if (showRating || (item && 'rating' in item)) payload.rating = values.rating ?? null
@@ -74,14 +59,13 @@ export default function ItemForm({ item, showRating, serverValidation, onSubmit,
       onClose()
     } catch (err) {
       setSaving(false)
-      // ASP.NET Core validation errors, already normalized to { field: message }.
+      // Field errors (normalized to { field: message }) go under each input...
       const fieldErrors = err.fieldErrors ?? {}
-      const shown = Object.fromEntries(Object.entries(fieldErrors).filter(([k]) => FIELDS.includes(k)))
-      const others = Object.entries(fieldErrors)
-        .filter(([k]) => !FIELDS.includes(k))
-        .map(([k, msg]) => `${k}: ${msg}`)
-      setErrors(shown)
-      setFormError({ message: err.message, details: others })
+      setErrors(Object.fromEntries(Object.entries(fieldErrors).filter(([k]) => FIELDS.includes(k))))
+      // ...and the alert lists exactly what the API sent, with its original keys.
+      const raw = err.body?.errors && typeof err.body.errors === 'object' ? err.body.errors : {}
+      const details = Object.entries(raw).map(([k, v]) => [k, Array.isArray(v) ? v.join(' ') : String(v)])
+      setFormError({ status: err.status, message: err.message, details })
     }
   }
 
@@ -102,12 +86,17 @@ export default function ItemForm({ item, showRating, serverValidation, onSubmit,
     >
       <form id="item-form" className="form" onSubmit={handleSubmit} noValidate>
         {formError && (
-          <div className="alert error column">
-            <span>{formError.message}</span>
+          <div className="alert error column" role="alert">
+            <span>
+              {formError.status > 0 && <strong>{formError.status} · </strong>}
+              {formError.message}
+            </span>
             {formError.details.length > 0 && (
               <ul>
-                {formError.details.map((d) => (
-                  <li key={d}>{d}</li>
+                {formError.details.map(([key, message]) => (
+                  <li key={key}>
+                    <code>{key}</code> {message}
+                  </li>
                 ))}
               </ul>
             )}
@@ -119,28 +108,6 @@ export default function ItemForm({ item, showRating, serverValidation, onSubmit,
           <input autoFocus value={values.title} onChange={set('title')} placeholder="e.g. Blade Runner 2049" {...field('title')} />
           {errors.title && <small className="error-text">{errors.title}</small>}
         </label>
-
-        <div className="field">
-          <span>Type</span>
-          <div className="segmented" role="radiogroup">
-            {[
-              ['movie', 'Movie', Film],
-              ['series', 'Series', Tv],
-            ].map(([value, label, Icon]) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={values.type === value}
-                className={values.type === value ? 'active' : ''}
-                onClick={() => set('type')(value)}
-              >
-                <Icon size={16} /> {label}
-              </button>
-            ))}
-          </div>
-          {errors.type && <small className="error-text">{errors.type}</small>}
-        </div>
 
         <div className="row">
           <label className="field">
